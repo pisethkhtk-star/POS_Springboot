@@ -154,14 +154,14 @@ public class ProductController {
     public ResponseEntity<Object> getAllProducts(@RequestBody BasePostReq req) {
         try {
             List<String> stringList = new ArrayList<>();
-            if (req.getStatus().equals("ALL")) {
+            if (req != null && "ALL".equals(req.getStatus())) {
                 stringList.add(Constants.STATUS_ACTIVE);
                 stringList.add(Constants.STATUS_DELETE);
                 List<Product> list = productRepository.findAllByStatusInOrderByIdDesc(stringList);
                 messageRes = new MessageRes();
                 messageRes.setSuccess(list);
             }
-            if (req.getStatus() == null) {
+            if (req == null || !"ALL".equals(req.getStatus())) {
                 stringList.add(Constants.STATUS_ACTIVE);
                 List<Product> list = productRepository.findAllByStatusInOrderByIdDesc(stringList);
                 messageRes = new MessageRes();

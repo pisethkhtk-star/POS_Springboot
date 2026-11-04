@@ -4,16 +4,16 @@ server:
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:54322/content_management_db
+    url: jdbc:postgresql://localhost:5432/content_management_db
     username: postgres
-    password: 1234
+    password: postgres
 
   jpa:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: true
 
   flyway:
@@ -35,11 +35,9 @@ spring:
 
   upload:
     server:
-      path: /opt/projects/teach/upload/images/
+      path: ./upload/images/
     client:
       path: /image/**
-
-
 
 post:
   free:
