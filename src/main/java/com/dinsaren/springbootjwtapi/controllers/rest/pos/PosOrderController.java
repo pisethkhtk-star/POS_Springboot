@@ -53,7 +53,7 @@ public class PosOrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrder(request, userId));
     }
 
-    @Operation(summary = "Cancel or refund order and return stock")
+    @Operation(summary = "Cancel, refund, or delete order and return stock")
     @PutMapping("/{id}")
     public ResponseEntity<PosOrder> updateStatus(
         @PathVariable Integer id,
@@ -63,5 +63,15 @@ public class PosOrderController {
         Integer userId = user != null ? user.getId() : 1;
         String status = body.get("status");
         return ResponseEntity.ok(orderService.updateOrderStatus(id, status, userId));
+    }
+
+    @Operation(summary = "Delete / void order and return stock")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<PosOrder> deleteOrder(
+        @PathVariable Integer id,
+        @io.swagger.v3.oas.annotations.Parameter(hidden = true) @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        Integer userId = user != null ? user.getId() : 1;
+        return ResponseEntity.ok(orderService.updateOrderStatus(id, "DELETED", userId));
     }
 }

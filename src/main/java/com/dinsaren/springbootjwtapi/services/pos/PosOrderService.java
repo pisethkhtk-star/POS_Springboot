@@ -205,15 +205,17 @@ public class PosOrderService {
 
     @Transactional
     public PosOrder updateOrderStatus(Integer id, String targetStatusStr, Integer currentUserId) {
-        if (targetStatusStr == null || (!"REFUNDED".equalsIgnoreCase(targetStatusStr) && !"CANCELLED".equalsIgnoreCase(targetStatusStr))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid target status: must be CANCELLED or REFUNDED");
+        if (targetStatusStr == null || (!"REFUNDED".equalsIgnoreCase(targetStatusStr) 
+                && !"CANCELLED".equalsIgnoreCase(targetStatusStr)
+                && !"DELETED".equalsIgnoreCase(targetStatusStr))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid target status: must be CANCELLED, REFUNDED, or DELETED");
         }
 
         OrderStatus targetStatus = OrderStatus.valueOf(targetStatusStr.toUpperCase());
         PosOrder order = getOrderById(id);
 
-        if (order.getStatus() == OrderStatus.REFUNDED || order.getStatus() == OrderStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order has already been cancelled or refunded");
+        if (order.getStatus() == OrderStatus.REFUNDED || order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.DELETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order has already been cancelled, refunded, or deleted");
         }
 
         order.setStatus(targetStatus);
