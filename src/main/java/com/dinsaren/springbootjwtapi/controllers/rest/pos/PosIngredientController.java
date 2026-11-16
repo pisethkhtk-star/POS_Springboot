@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -68,7 +69,19 @@ public class PosIngredientController {
 
     @Operation(summary = "Delete ingredient")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Boolean>> delete(@PathVariable Integer id) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> delete(
+        @PathVariable Integer id,
+        @io.swagger.v3.oas.annotations.Parameter(hidden = true) @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        if (user != null) {
+            boolean isAdmin = user.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_ADMIN") || a.getAuthority().equalsIgnoreCase("ADMIN"));
+            if (!isAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Access denied: Only ADMIN has permission to delete ingredients"));
+            }
+        }
         ingredientService.deleteIngredient(id);
         return ResponseEntity.ok(Map.of("success", true));
     }
