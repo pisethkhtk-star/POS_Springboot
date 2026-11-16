@@ -8,11 +8,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -32,10 +35,19 @@ public class PosInventoryController {
 
     @Operation(summary = "Adjust stock for product or ingredient")
     @PostMapping
-    public ResponseEntity<Object> adjust(
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> adjust(
         @RequestBody InventoryAdjustRequest request,
         @io.swagger.v3.oas.annotations.Parameter(hidden = true) @AuthenticationPrincipal UserDetailsImpl user
     ) {
+        if (user != null) {
+            boolean isAdmin = user.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_ADMIN") || a.getAuthority().equalsIgnoreCase("ADMIN"));
+            if (!isAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Access denied: Only ADMIN has permission to adjust stock"));
+            }
+        }
         Integer userId = user != null ? user.getId() : 1;
         String userName = user != null ? user.getUsername() : "Admin";
         return ResponseEntity.ok(inventoryService.adjustStock(request, userId, userName));
