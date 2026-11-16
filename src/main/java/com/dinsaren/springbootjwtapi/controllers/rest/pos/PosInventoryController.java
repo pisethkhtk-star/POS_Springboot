@@ -37,15 +37,15 @@ public class PosInventoryController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> adjust(
-        @RequestBody InventoryAdjustRequest request,
-        @io.swagger.v3.oas.annotations.Parameter(hidden = true) @AuthenticationPrincipal UserDetailsImpl user
-    ) {
+            @RequestBody InventoryAdjustRequest request,
+            @io.swagger.v3.oas.annotations.Parameter(hidden = true) @AuthenticationPrincipal UserDetailsImpl user) {
         if (user != null) {
             boolean isAdmin = user.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_ADMIN") || a.getAuthority().equalsIgnoreCase("ADMIN"));
+                    .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_ADMIN")
+                            || a.getAuthority().equalsIgnoreCase("ADMIN"));
             if (!isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Access denied: Only ADMIN has permission to adjust stock"));
+                        .body(Map.of("message", "Access denied: Only ADMIN has permission to adjust stock"));
             }
         }
         Integer userId = user != null ? user.getId() : 1;
