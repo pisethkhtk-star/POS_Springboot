@@ -72,6 +72,10 @@ public class PosUserService {
         roles.add(role);
         user.setRoles(roles);
 
+        if (request.getPermissions() != null) {
+            user.setPermissions(request.getPermissions());
+        }
+
         return userRepository.save(user);
     }
 
@@ -104,6 +108,10 @@ public class PosUserService {
 
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword().trim()));
+        }
+
+        if (request.getPermissions() != null) {
+            user.setPermissions(request.getPermissions());
         }
 
         return userRepository.save(user);

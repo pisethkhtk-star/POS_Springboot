@@ -2,6 +2,9 @@ package com.dinsaren.springbootjwtapi.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -11,7 +14,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -43,6 +48,11 @@ public class User extends BaseEntity {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_permissions", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "page")
+    private List<String> permissions = new ArrayList<>();
 
     public User() {
     }
@@ -187,5 +197,13 @@ public class User extends BaseEntity {
 
     public java.util.Date getCreatedAt() {
         return getCreateAt();
+    }
+
+    public List<String> getPermissions() {
+        return permissions != null ? permissions : new ArrayList<>();
+    }
+
+    public void setPermissions(List<String> permissions) {
+        this.permissions = permissions != null ? permissions : new ArrayList<>();
     }
 }

@@ -44,7 +44,9 @@ public class PosAuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
 
-        List<String> permissions = rolePermissionService.getDefaultPermissions(user.getRole());
+        List<String> permissions = (user.getPermissions() != null && !user.getPermissions().isEmpty())
+                ? user.getPermissions()
+                : rolePermissionService.getDefaultPermissions(user.getRole());
         String token = jwtUtils.generateTokenFromUsername(user.getUsername() != null ? user.getUsername() : user.getEmail());
 
         ResponseCookie cookie = ResponseCookie.from("token", token)
@@ -84,7 +86,9 @@ public class PosAuthService {
                 .or(() -> userRepository.findByEmail(finalUsername))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
 
-        List<String> permissions = rolePermissionService.getDefaultPermissions(user.getRole());
+        List<String> permissions = (user.getPermissions() != null && !user.getPermissions().isEmpty())
+                ? user.getPermissions()
+                : rolePermissionService.getDefaultPermissions(user.getRole());
         String token = jwtUtils.generateTokenFromUsername(user.getUsername() != null ? user.getUsername() : user.getEmail());
 
         ResponseCookie cookie = ResponseCookie.from("token", token)
