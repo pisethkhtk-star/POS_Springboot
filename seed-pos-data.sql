@@ -6,8 +6,9 @@
 -- 1. ROLES
 INSERT INTO roles (name) VALUES 
 ('ROLE_ADMIN'),
-('ROLE_USER'),
-('ROLE_CASHIER')
+('ROLE_MANAGER'),
+('ROLE_CASHIER'),
+('ROLE_USER')
 ON CONFLICT (name) DO NOTHING;
 
 -- 2. USERS (Password hashes for bcrypt)

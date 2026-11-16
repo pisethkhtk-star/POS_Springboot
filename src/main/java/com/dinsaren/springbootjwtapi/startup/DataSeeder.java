@@ -64,6 +64,9 @@ public class DataSeeder implements ApplicationRunner {
         Role adminRole = roleRepository.findByName(UserRole.ROLE_ADMIN)
                 .orElseGet(() -> roleRepository.save(new Role(UserRole.ROLE_ADMIN)));
 
+        roleRepository.findByName(UserRole.ROLE_MANAGER)
+                .orElseGet(() -> roleRepository.save(new Role(UserRole.ROLE_MANAGER)));
+
         roleRepository.findByName(UserRole.ROLE_USER)
                 .orElseGet(() -> roleRepository.save(new Role(UserRole.ROLE_USER)));
 
