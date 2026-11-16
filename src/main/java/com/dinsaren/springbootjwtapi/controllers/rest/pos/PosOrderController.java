@@ -26,14 +26,19 @@ public class PosOrderController {
 
     private final PosOrderService orderService;
 
-    @Operation(summary = "Search and filter orders")
+    @Operation(summary = "Search and filter orders with optional pagination")
     @GetMapping
-    public ResponseEntity<List<PosOrder>> search(
+    public ResponseEntity<?> search(
         @RequestParam(required = false) String search,
         @RequestParam(required = false) String status,
         @RequestParam(required = false) String startDate,
-        @RequestParam(required = false) String endDate
+        @RequestParam(required = false) String endDate,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false, defaultValue = "20") Integer size
     ) {
+        if (page != null) {
+            return ResponseEntity.ok(orderService.searchOrdersPaged(search, status, startDate, endDate, page, size));
+        }
         return ResponseEntity.ok(orderService.searchOrders(search, status, startDate, endDate));
     }
 

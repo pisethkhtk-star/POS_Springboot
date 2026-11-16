@@ -3,11 +3,15 @@ package com.dinsaren.springbootjwtapi.services.pos;
 import com.dinsaren.springbootjwtapi.models.pos.*;
 import com.dinsaren.springbootjwtapi.payload.pos.OrderCreateRequest;
 import com.dinsaren.springbootjwtapi.payload.pos.OrderItemRequest;
+import com.dinsaren.springbootjwtapi.payload.pos.OrderPageResponse;
 import com.dinsaren.springbootjwtapi.repository.pos.*;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -36,7 +40,7 @@ public class PosOrderService {
     private final InventoryLogRepository inventoryLogRepository;
     private final StockService stockService;
 
-    public List<PosOrder> searchOrders(String search, String statusStr, String startDateStr, String endDateStr) {
+    public Specification<PosOrder> buildOrderSpecification(String search, String statusStr, String startDateStr, String endDateStr) {
         OrderStatus status = null;
         if (statusStr != null && !statusStr.trim().isEmpty() && !"ALL".equalsIgnoreCase(statusStr.trim())) {
             try {
@@ -63,7 +67,7 @@ public class PosOrderService {
         final LocalDateTime finalEndDate = endDate;
         final String finalSearch = (search != null && !search.trim().isEmpty()) ? search.trim().toLowerCase() : null;
 
-        Specification<PosOrder> spec = (root, query, cb) -> {
+        return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             if (finalSearch != null) {
@@ -89,8 +93,47 @@ public class PosOrderService {
 
             return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
 
+    public List<PosOrder> searchOrders(String search, String statusStr, String startDateStr, String endDateStr) {
+        Specification<PosOrder> spec = buildOrderSpecification(search, statusStr, startDateStr, endDateStr);
         return posOrderRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
+    }
+
+    public OrderPageResponse searchOrdersPaged(String search, String statusStr, String startDateStr, String endDateStr, int page, int size) {
+        int pageIndex = page > 0 ? page - 1 : 0;
+        int pageSize = size > 0 ? size : 20;
+
+        Specification<PosOrder> spec = buildOrderSpecification(search, statusStr, startDateStr, endDateStr);
+        Pageable pageable = PageRequest.of(pageIndex, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<PosOrder> orderPage = posOrderRepository.findAll(spec, pageable);
+
+        // Calculate total revenue of COMPLETED orders for the filtered criteria
+        double totalRev = 0.0;
+        try {
+            List<PosOrder> allMatching = posOrderRepository.findAll(spec);
+            totalRev = allMatching.stream()
+                    .filter(o -> o.getStatus() == OrderStatus.COMPLETED && o.getTotal() != null)
+                    .mapToDouble(o -> o.getTotal().doubleValue())
+                    .sum();
+        } catch (Exception e) {
+            totalRev = orderPage.getContent().stream()
+                    .filter(o -> o.getStatus() == OrderStatus.COMPLETED && o.getTotal() != null)
+                    .mapToDouble(o -> o.getTotal().doubleValue())
+                    .sum();
+        }
+
+        return OrderPageResponse.builder()
+                .content(orderPage.getContent())
+                .page(orderPage.getNumber() + 1) // 1-based for client readability
+                .size(orderPage.getSize())
+                .totalElements(orderPage.getTotalElements())
+                .totalPages(orderPage.getTotalPages())
+                .first(orderPage.isFirst())
+                .last(orderPage.isLast())
+                .totalRevenue(totalRev)
+                .build();
     }
 
     public PosOrder getOrderById(Integer id) {
