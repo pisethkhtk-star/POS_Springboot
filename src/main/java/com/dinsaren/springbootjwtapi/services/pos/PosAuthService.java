@@ -47,7 +47,8 @@ public class PosAuthService {
         List<String> permissions = (user.getPermissions() != null && !user.getPermissions().isEmpty())
                 ? user.getPermissions()
                 : rolePermissionService.getDefaultPermissions(user.getRole());
-        String token = jwtUtils.generateTokenFromUsername(user.getUsername() != null ? user.getUsername() : user.getEmail());
+        String token = jwtUtils
+                .generateTokenFromUsername(user.getUsername() != null ? user.getUsername() : user.getEmail());
 
         ResponseCookie cookie = ResponseCookie.from("token", token)
                 .httpOnly(true)
@@ -58,13 +59,16 @@ public class PosAuthService {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        UserResponseDTO userDTO = new UserResponseDTO(user.getId(), user.getEmail(), user.getName(), user.getRole(), permissions, user.getCreatedAt());
+        UserResponseDTO userDTO = new UserResponseDTO(user.getId(), user.getEmail(), user.getName(), user.getRole(),
+                permissions, user.getCreatedAt());
         return Map.of("user", userDTO, "token", token);
     }
 
-    public Map<String, Object> getCurrentUser(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
+    public Map<String, Object> getCurrentUser(Authentication authentication, HttpServletRequest request,
+            HttpServletResponse response) {
         String username = null;
-        if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
             username = authentication.getName();
         } else if (request != null && request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
@@ -89,7 +93,8 @@ public class PosAuthService {
         List<String> permissions = (user.getPermissions() != null && !user.getPermissions().isEmpty())
                 ? user.getPermissions()
                 : rolePermissionService.getDefaultPermissions(user.getRole());
-        String token = jwtUtils.generateTokenFromUsername(user.getUsername() != null ? user.getUsername() : user.getEmail());
+        String token = jwtUtils
+                .generateTokenFromUsername(user.getUsername() != null ? user.getUsername() : user.getEmail());
 
         ResponseCookie cookie = ResponseCookie.from("token", token)
                 .httpOnly(true)
@@ -100,7 +105,8 @@ public class PosAuthService {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        UserResponseDTO userDTO = new UserResponseDTO(user.getId(), user.getEmail(), user.getName(), user.getRole(), permissions, user.getCreatedAt());
+        UserResponseDTO userDTO = new UserResponseDTO(user.getId(), user.getEmail(), user.getName(), user.getRole(),
+                permissions, user.getCreatedAt());
         return Map.of("user", userDTO, "token", token);
     }
 
