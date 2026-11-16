@@ -34,6 +34,7 @@ public class PosOrderService {
     private final IngredientRepository ingredientRepository;
     private final PosCustomerRepository posCustomerRepository;
     private final InventoryLogRepository inventoryLogRepository;
+    private final StockService stockService;
 
     public List<PosOrder> searchOrders(String search, String statusStr, String startDateStr, String endDateStr) {
         OrderStatus status = null;
@@ -135,60 +136,13 @@ public class PosOrderService {
             BigDecimal price = itemReq.getPrice();
             BigDecimal subtotal = price.multiply(new BigDecimal(qty));
 
-            // Stock deduction
-            if (product.getHasRecipe() && product.getIngredients() != null && !product.getIngredients().isEmpty()) {
-                for (ProductIngredient pi : product.getIngredients()) {
-                    Ingredient ing = pi.getIngredient();
-                    BigDecimal requiredQty = pi.getQuantity().multiply(new BigDecimal(qty));
-                    BigDecimal currentStock = ing.getStock();
-
-                    if (currentStock.compareTo(requiredQty) < 0) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                "Insufficient stock for ingredient: " + ing.getName() +
-                                ". Available: " + currentStock + " " + ing.getUnit() +
-                                ", Required: " + requiredQty + " " + ing.getUnit());
-                    }
-
-                    BigDecimal newStock = currentStock.subtract(requiredQty).setScale(2, RoundingMode.HALF_UP);
-                    ing.setStock(newStock);
-                    ingredientRepository.save(ing);
-
-                    InventoryLog log = new InventoryLog();
-                    log.setIngredientId(ing.getId());
-                    log.setType("ORDER_OUT");
-                    log.setQuantity(requiredQty);
-                    log.setBeforeQty(currentStock);
-                    log.setAfterQty(newStock);
-                    log.setNote("Deducted for Order #" + orderNumber + " (" + product.getName() + " x" + qty + ")");
-                    log.setUserId(currentUserId);
-                    inventoryLogRepository.save(log);
-                }
-            } else {
-                if (product.getStock() < qty) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Insufficient product stock for " + product.getName() +
-                            ". Available: " + product.getStock() + ", Required: " + qty);
-                }
-
-                int oldStock = product.getStock();
-                int newStock = oldStock - qty;
-                product.setStock(newStock);
-                posProductRepository.save(product);
-
-                InventoryLog log = new InventoryLog();
-                log.setProductId(product.getId());
-                log.setType("OUT");
-                log.setQuantity(new BigDecimal(qty));
-                log.setBeforeQty(new BigDecimal(oldStock));
-                log.setAfterQty(new BigDecimal(newStock));
-                log.setNote("Order sale #" + orderNumber);
-                log.setUserId(currentUserId);
-                inventoryLogRepository.save(log);
-            }
-
             PosOrderItem orderItem = new PosOrderItem(savedOrder, product, qty, price, subtotal);
             posOrderItemRepository.save(orderItem);
             savedOrder.getItems().add(orderItem);
+        }
+
+        // Auto-deduct ingredient/product stock inside this single transaction
+        stockService.deductStockForOrder(savedOrder, currentUserId);
         }
 
         // Award loyalty points to customer (1 point per dollar spent)

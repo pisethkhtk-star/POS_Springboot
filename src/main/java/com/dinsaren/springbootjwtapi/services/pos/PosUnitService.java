@@ -1,14 +1,15 @@
 package com.dinsaren.springbootjwtapi.services.pos;
 
 import com.dinsaren.springbootjwtapi.models.pos.Unit;
+import com.dinsaren.springbootjwtapi.models.pos.UnitType;
 import com.dinsaren.springbootjwtapi.payload.pos.UnitRequest;
 import com.dinsaren.springbootjwtapi.repository.pos.UnitRepository;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -17,34 +18,14 @@ import java.util.List;
 public class PosUnitService {
 
     private final UnitRepository unitRepository;
-
-    @PostConstruct
-    public void initDefaultUnits() {
-        if (unitRepository.count() == 0) {
-            log.info("Seeding initial default measurement units...");
-            List<Unit> defaults = List.of(
-                new Unit("Kilogram", "kg", "Standard metric mass"),
-                new Unit("Gram", "g", "Metric mass for small measurements"),
-                new Unit("Liter", "liter", "Standard metric volume"),
-                new Unit("Milliliter", "ml", "Liquid volume for recipes"),
-                new Unit("Can", "can", "Canned ingredients (milk, soda)"),
-                new Unit("Bottle", "bottle", "Bottled ingredients or syrups"),
-                new Unit("Pieces", "pcs", "Countable units (cups, lids)"),
-                new Unit("Pack", "pack", "Packaged goods"),
-                new Unit("Bag", "bag", "Bagged items (beans, sugar)"),
-                new Unit("Box", "box", "Boxed goods"),
-                new Unit("Cup", "cup", "Serving cups"),
-                new Unit("Ounce", "oz", "Fluid/dry ounce"),
-                new Unit("Tablespoon", "tbsp", "Cooking measure (~15ml)"),
-                new Unit("Teaspoon", "tsp", "Cooking measure (~5ml)")
-            );
-            unitRepository.saveAll(defaults);
-            log.info("Initialized {} default units.", defaults.size());
-        }
-    }
+    private final UnitConversionService unitConversionService;
 
     public List<Unit> getAllUnits() {
         return unitRepository.findAll();
+    }
+
+    public List<Unit> getUnitsByType(UnitType unitType) {
+        return unitRepository.findByUnitType(unitType);
     }
 
     public Unit getUnitById(Integer id) {
@@ -66,8 +47,30 @@ public class PosUnitService {
             throw new RuntimeException("A unit with name '" + name + "' already exists");
         }
 
-        String symbol = request.getSymbol().trim().toLowerCase();
-        Unit unit = new Unit(name, symbol, request.getDescription());
+        UnitType unitType = request.getUnitType() != null ? request.getUnitType() : UnitType.COUNT;
+        boolean isBase = Boolean.TRUE.equals(request.getIsBase());
+        BigDecimal factor = request.getFactorToBase() != null && request.getFactorToBase().compareTo(BigDecimal.ZERO) > 0
+                ? request.getFactorToBase()
+                : BigDecimal.ONE;
+
+        if (isBase) {
+            factor = BigDecimal.ONE;
+            // Ensure no other unit is marked base for this unit type
+            unitRepository.findByUnitTypeAndIsBaseTrue(unitType).ifPresent(oldBase -> {
+                oldBase.setIsBase(false);
+                unitRepository.save(oldBase);
+            });
+        }
+
+        Unit unit = new Unit(
+            unitType,
+            name,
+            request.getNameKm(),
+            request.getSymbol().trim(),
+            isBase,
+            factor,
+            request.getDescription()
+        );
         return unitRepository.save(unit);
     }
 
@@ -85,8 +88,34 @@ public class PosUnitService {
             unit.setName(name);
         }
 
+        if (request.getNameKm() != null) {
+            unit.setNameKm(request.getNameKm().trim());
+        }
+
         if (request.getSymbol() != null && !request.getSymbol().trim().isEmpty()) {
-            unit.setSymbol(request.getSymbol().trim().toLowerCase());
+            unit.setSymbol(request.getSymbol().trim());
+        }
+
+        if (request.getUnitType() != null) {
+            unit.setUnitType(request.getUnitType());
+        }
+
+        if (request.getFactorToBase() != null && request.getFactorToBase().compareTo(BigDecimal.ZERO) > 0) {
+            unit.setFactorToBase(request.getFactorToBase());
+        }
+
+        if (request.getIsBase() != null) {
+            boolean isBase = request.getIsBase();
+            if (isBase && !Boolean.TRUE.equals(unit.getIsBase())) {
+                unit.setFactorToBase(BigDecimal.ONE);
+                unitRepository.findByUnitTypeAndIsBaseTrue(unit.getUnitType()).ifPresent(oldBase -> {
+                    if (!oldBase.getId().equals(id)) {
+                        oldBase.setIsBase(false);
+                        unitRepository.save(oldBase);
+                    }
+                });
+            }
+            unit.setIsBase(isBase);
         }
 
         if (request.getDescription() != null) {
@@ -99,6 +128,9 @@ public class PosUnitService {
     @Transactional
     public void deleteUnit(Integer id) {
         Unit unit = getUnitById(id);
+        if (Boolean.TRUE.equals(unit.getIsBase())) {
+            throw new RuntimeException("Cannot delete base unit for " + unit.getUnitType() + ". Set another unit as base first.");
+        }
         unitRepository.delete(unit);
     }
 }

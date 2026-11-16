@@ -30,12 +30,23 @@ public class ProductIngredient extends BaseEntity {
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(nullable = false, precision = 10, scale = 4)
     private BigDecimal quantity;
+
+    @Column(length = 50)
+    private String unit;
 
     public ProductIngredient(PosProduct product, Ingredient ingredient, BigDecimal quantity) {
         this.product = product;
         this.ingredient = ingredient;
         this.quantity = quantity;
+        this.unit = ingredient != null ? ingredient.getUnit() : null;
+    }
+
+    public ProductIngredient(PosProduct product, Ingredient ingredient, BigDecimal quantity, String unit) {
+        this.product = product;
+        this.ingredient = ingredient;
+        this.quantity = quantity;
+        this.unit = unit != null ? unit : (ingredient != null ? ingredient.getUnit() : null);
     }
 }

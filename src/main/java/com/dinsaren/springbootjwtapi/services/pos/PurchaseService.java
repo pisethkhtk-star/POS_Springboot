@@ -26,6 +26,7 @@ public class PurchaseService {
     private final SupplierRepository supplierRepository;
     private final IngredientRepository ingredientRepository;
     private final InventoryLogRepository inventoryLogRepository;
+    private final StockService stockService;
 
     public List<Purchase> getAllPurchases() {
         return purchaseRepository.findAllByOrderByCreatedAtDesc();
@@ -76,21 +77,8 @@ public class PurchaseService {
             purchaseItemRepository.save(purchaseItem);
             savedPurchase.getItems().add(purchaseItem);
 
-            // Increment ingredient stock
-            BigDecimal oldStock = ingredient.getStock();
-            BigDecimal newStock = oldStock.add(qty).setScale(2, RoundingMode.HALF_UP);
-            ingredient.setStock(newStock);
-            ingredientRepository.save(ingredient);
-
-            InventoryLog log = new InventoryLog();
-            log.setIngredientId(ingredient.getId());
-            log.setType("PURCHASE_IN");
-            log.setQuantity(qty);
-            log.setBeforeQty(oldStock);
-            log.setAfterQty(newStock);
-            log.setNote(request.getNote() != null ? request.getNote() : "Purchased via Ref #" + reference);
-            log.setUserId(currentUserId);
-            inventoryLogRepository.save(log);
+            // Increment ingredient stock & apply Weighted Average Cost
+            stockService.processPurchaseIntake(ingredient.getId(), null, qty, subtotal, "Purchased via Ref #" + reference, currentUserId);
         }
 
         return savedPurchase;

@@ -9,6 +9,7 @@ import java.util.List;
 @Repository
 public interface ProductIngredientRepository extends JpaRepository<ProductIngredient, Integer> {
     List<ProductIngredient> findByProductId(Integer productId);
+    List<ProductIngredient> findByIngredientId(Integer ingredientId);
     void deleteByProductId(Integer productId);
     long countByIngredientId(Integer ingredientId);
 }

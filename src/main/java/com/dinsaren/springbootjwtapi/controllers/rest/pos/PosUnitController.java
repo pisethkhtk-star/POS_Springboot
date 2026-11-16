@@ -1,9 +1,11 @@
 package com.dinsaren.springbootjwtapi.controllers.rest.pos;
 
 import com.dinsaren.springbootjwtapi.models.pos.Unit;
+import com.dinsaren.springbootjwtapi.models.pos.UnitType;
 import com.dinsaren.springbootjwtapi.payload.pos.UnitRequest;
 import com.dinsaren.springbootjwtapi.security.services.UserDetailsImpl;
 import com.dinsaren.springbootjwtapi.services.pos.PosUnitService;
+import com.dinsaren.springbootjwtapi.services.pos.UnitConversionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -26,10 +29,14 @@ import java.util.Map;
 public class PosUnitController {
 
     private final PosUnitService unitService;
+    private final UnitConversionService unitConversionService;
 
-    @Operation(summary = "Get all units")
+    @Operation(summary = "Get all units or filter by unit type (WEIGHT, VOLUME, COUNT)")
     @GetMapping
-    public ResponseEntity<List<Unit>> getAll() {
+    public ResponseEntity<List<Unit>> getAll(@RequestParam(required = false) UnitType type) {
+        if (type != null) {
+            return ResponseEntity.ok(unitService.getUnitsByType(type));
+        }
         return ResponseEntity.ok(unitService.getAllUnits());
     }
 
@@ -37,6 +44,27 @@ public class PosUnitController {
     @GetMapping("/{id}")
     public ResponseEntity<Unit> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(unitService.getUnitById(id));
+    }
+
+    @Operation(summary = "Convert quantity between two unit symbols")
+    @GetMapping("/convert")
+    public ResponseEntity<Map<String, Object>> convert(
+        @RequestParam BigDecimal quantity,
+        @RequestParam String from,
+        @RequestParam String to
+    ) {
+        Unit fromUnit = unitConversionService.findBySymbol(from)
+                .orElseThrow(() -> new IllegalArgumentException("Unit not found: " + from));
+        Unit toUnit = unitConversionService.findBySymbol(to)
+                .orElseThrow(() -> new IllegalArgumentException("Unit not found: " + to));
+
+        BigDecimal result = unitConversionService.convert(quantity, fromUnit, toUnit);
+        return ResponseEntity.ok(Map.of(
+            "quantity", quantity,
+            "from", from,
+            "to", to,
+            "result", result
+        ));
     }
 
     @Operation(summary = "Create a new unit")
