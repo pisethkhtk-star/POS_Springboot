@@ -14,7 +14,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,23 +38,26 @@ public class DataSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("Checking and seeding default POS data...");
-        seedAll();
-        log.info("POS Data Seeding completed successfully.");
+        try {
+            log.info("Checking and seeding default POS data...");
+            seedAll();
+            log.info("POS Data Seeding completed successfully.");
+        } catch (Throwable t) {
+            log.error("Warning during POS startup data seeding: {}", t.getMessage());
+        }
     }
 
-    @Transactional
     public Map<String, Object> seedAll() {
         Map<String, Object> summary = new LinkedHashMap<>();
 
-        summary.put("users", seedAdminUser());
-        summary.put("permissions", seedPermissions());
-        summary.put("categories", seedCategories());
-        summary.put("suppliers", seedSuppliers());
-        summary.put("ingredients", seedIngredients());
-        summary.put("products", seedProductsWithRecipes());
-        summary.put("customers", seedCustomers());
-        summary.put("discounts", seedDiscounts());
+        try { summary.put("users", seedAdminUser()); } catch (Exception e) { log.warn("User seeding: {}", e.getMessage()); }
+        try { summary.put("permissions", seedPermissions()); } catch (Exception e) { log.warn("Permission seeding: {}", e.getMessage()); }
+        try { summary.put("categories", seedCategories()); } catch (Exception e) { log.warn("Category seeding: {}", e.getMessage()); }
+        try { summary.put("suppliers", seedSuppliers()); } catch (Exception e) { log.warn("Supplier seeding: {}", e.getMessage()); }
+        try { summary.put("ingredients", seedIngredients()); } catch (Exception e) { log.warn("Ingredient seeding: {}", e.getMessage()); }
+        try { summary.put("products", seedProductsWithRecipes()); } catch (Exception e) { log.warn("Product seeding: {}", e.getMessage()); }
+        try { summary.put("customers", seedCustomers()); } catch (Exception e) { log.warn("Customer seeding: {}", e.getMessage()); }
+        try { summary.put("discounts", seedDiscounts()); } catch (Exception e) { log.warn("Discount seeding: {}", e.getMessage()); }
 
         return summary;
     }
@@ -74,7 +76,7 @@ public class DataSeeder implements ApplicationRunner {
                 .orElseGet(() -> roleRepository.save(new Role(UserRole.ROLE_CASHIER)));
 
         // 1. Admin System user (admin / Admin@1234)
-        if (userRepository.findByUsername("admin").isEmpty()) {
+        if (userRepository.findByUsername("admin").isEmpty() && !userRepository.existsByEmail("admin@admin.com")) {
             User admin = new User("admin", "admin@admin.com", passwordEncoder.encode("Admin@1234"), "00000000000");
             admin.setFirstName("Admin");
             admin.setLastName("System");
@@ -87,7 +89,7 @@ public class DataSeeder implements ApplicationRunner {
 
         // 2. POS Admin user (admin@pos.com / Admin@123)
         String posAdminEmail = "admin@pos.com";
-        if (!userRepository.existsByEmail(posAdminEmail)) {
+        if (!userRepository.existsByEmail(posAdminEmail) && userRepository.findByUsername(posAdminEmail).isEmpty()) {
             User posAdmin = new User(posAdminEmail, posAdminEmail, passwordEncoder.encode("Admin@123"), "012345678");
             posAdmin.setFirstName("Admin");
             posAdmin.setLastName("User");
@@ -100,7 +102,7 @@ public class DataSeeder implements ApplicationRunner {
 
         // 3. Cashier user (cashier@pos.com / Cashier@123)
         String cashierEmail = "cashier@pos.com";
-        if (!userRepository.existsByEmail(cashierEmail)) {
+        if (!userRepository.existsByEmail(cashierEmail) && userRepository.findByUsername(cashierEmail).isEmpty()) {
             User cashier = new User(cashierEmail, cashierEmail, passwordEncoder.encode("Cashier@123"), "098765432");
             cashier.setFirstName("Sophea");
             cashier.setLastName("Cashier");
@@ -149,8 +151,12 @@ public class DataSeeder implements ApplicationRunner {
         );
 
         defaultCats.forEach((name, icon) -> {
-            if (categoryRepository.findByNameIgnoreCase(name).isEmpty()) {
-                categoryRepository.save(new Category(name, icon));
+            try {
+                if (categoryRepository.findByNameIgnoreCase(name).isEmpty()) {
+                    categoryRepository.save(new Category(name, icon));
+                }
+            } catch (Exception e) {
+                log.warn("Category {} error: {}", name, e.getMessage());
             }
         });
         return "Total categories: " + categoryRepository.count();
@@ -180,9 +186,13 @@ public class DataSeeder implements ApplicationRunner {
     }
 
     private Ingredient saveIngredientIfMissing(String name, String code, String unit, BigDecimal stock, BigDecimal minStock, BigDecimal cost) {
-        return ingredientRepository.findByCode(code).orElseGet(() ->
-                ingredientRepository.save(new Ingredient(name, code, unit, stock, minStock, cost))
-        );
+        return ingredientRepository.findByCode(code).orElseGet(() -> {
+            try {
+                return ingredientRepository.save(new Ingredient(name, code, unit, stock, minStock, cost));
+            } catch (Exception e) {
+                return null;
+            }
+        });
     }
 
     private String seedProductsWithRecipes() {
@@ -209,9 +219,9 @@ public class DataSeeder implements ApplicationRunner {
                     "Iced Latte", "10000000000001", new BigDecimal("2.75"), new BigDecimal("0.65"),
                     0, 5, true, "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=400", bevId
             ));
-            if (beans != null) productIngredientRepository.save(new ProductIngredient(latte, beans, new BigDecimal("0.02")));
-            if (milk != null) productIngredientRepository.save(new ProductIngredient(latte, milk, new BigDecimal("0.15")));
-            if (cups != null) productIngredientRepository.save(new ProductIngredient(latte, cups, new BigDecimal("1.00")));
+            saveRecipe(latte, beans, new BigDecimal("0.02"));
+            saveRecipe(latte, milk, new BigDecimal("0.15"));
+            saveRecipe(latte, cups, new BigDecimal("1.00"));
         }
 
         // 2. Iced Americano (Recipe)
@@ -220,8 +230,8 @@ public class DataSeeder implements ApplicationRunner {
                     "Iced Americano", "10000000000002", new BigDecimal("2.00"), new BigDecimal("0.32"),
                     0, 5, true, "https://images.unsplash.com/photo-1551030173-122aabc4489c?w=400", bevId
             ));
-            if (beans != null) productIngredientRepository.save(new ProductIngredient(americano, beans, new BigDecimal("0.02")));
-            if (cups != null) productIngredientRepository.save(new ProductIngredient(americano, cups, new BigDecimal("1.00")));
+            saveRecipe(americano, beans, new BigDecimal("0.02"));
+            saveRecipe(americano, cups, new BigDecimal("1.00"));
         }
 
         // 3. Iced Matcha Latte (Recipe)
@@ -230,10 +240,10 @@ public class DataSeeder implements ApplicationRunner {
                     "Iced Matcha Latte", "10000000000003", new BigDecimal("2.80"), new BigDecimal("0.78"),
                     0, 5, true, "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=400", bevId
             ));
-            if (matcha != null) productIngredientRepository.save(new ProductIngredient(matchaLatte, matcha, new BigDecimal("0.015")));
-            if (milk != null) productIngredientRepository.save(new ProductIngredient(matchaLatte, milk, new BigDecimal("0.15")));
-            if (sugar != null) productIngredientRepository.save(new ProductIngredient(matchaLatte, sugar, new BigDecimal("0.02")));
-            if (cups != null) productIngredientRepository.save(new ProductIngredient(matchaLatte, cups, new BigDecimal("1.00")));
+            saveRecipe(matchaLatte, matcha, new BigDecimal("0.015"));
+            saveRecipe(matchaLatte, milk, new BigDecimal("0.15"));
+            saveRecipe(matchaLatte, sugar, new BigDecimal("0.02"));
+            saveRecipe(matchaLatte, cups, new BigDecimal("1.00"));
         }
 
         // 4. Iced Mocha (Recipe)
@@ -242,48 +252,68 @@ public class DataSeeder implements ApplicationRunner {
                     "Iced Mocha", "10000000000004", new BigDecimal("3.25"), new BigDecimal("0.85"),
                     0, 5, true, "https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?w=400", bevId
             ));
-            if (beans != null) productIngredientRepository.save(new ProductIngredient(mocha, beans, new BigDecimal("0.02")));
-            if (milk != null) productIngredientRepository.save(new ProductIngredient(mocha, milk, new BigDecimal("0.12")));
-            if (chocolate != null) productIngredientRepository.save(new ProductIngredient(mocha, chocolate, new BigDecimal("0.03")));
-            if (cups != null) productIngredientRepository.save(new ProductIngredient(mocha, cups, new BigDecimal("1.00")));
+            saveRecipe(mocha, beans, new BigDecimal("0.02"));
+            saveRecipe(mocha, milk, new BigDecimal("0.12"));
+            saveRecipe(mocha, chocolate, new BigDecimal("0.03"));
+            saveRecipe(mocha, cups, new BigDecimal("1.00"));
         }
 
         // 5. Standalone snacks & desserts
-        if (productRepository.findByCode("10000000000005").isEmpty()) {
-            productRepository.save(new PosProduct("Chocolate Chip Cookie", "10000000000005", new BigDecimal("1.50"), new BigDecimal("0.60"), 35, 5, false, "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400", snackId));
-        }
-        if (productRepository.findByCode("10000000000006").isEmpty()) {
-            productRepository.save(new PosProduct("Butter Croissant", "10000000000006", new BigDecimal("2.00"), new BigDecimal("0.90"), 24, 5, false, "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400", snackId));
-        }
-        if (productRepository.findByCode("10000000000007").isEmpty()) {
-            productRepository.save(new PosProduct("Club Sandwich", "10000000000007", new BigDecimal("4.50"), new BigDecimal("2.10"), 15, 3, false, "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400", mainId));
-        }
-        if (productRepository.findByCode("10000000000008").isEmpty()) {
-            productRepository.save(new PosProduct("Vanilla Soft Ice Cream", "10000000000008", new BigDecimal("1.75"), new BigDecimal("0.70"), 40, 10, false, "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=400", desId));
-        }
+        saveProductIfMissing("Chocolate Chip Cookie", "10000000000005", new BigDecimal("1.50"), new BigDecimal("0.60"), 35, 5, false, "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400", snackId);
+        saveProductIfMissing("Butter Croissant", "10000000000006", new BigDecimal("2.00"), new BigDecimal("0.90"), 24, 5, false, "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400", snackId);
+        saveProductIfMissing("Club Sandwich", "10000000000007", new BigDecimal("4.50"), new BigDecimal("2.10"), 15, 3, false, "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400", mainId);
+        saveProductIfMissing("Vanilla Soft Ice Cream", "10000000000008", new BigDecimal("1.75"), new BigDecimal("0.70"), 40, 10, false, "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=400", desId);
 
         return "Total products: " + productRepository.count();
     }
 
+    private void saveRecipe(PosProduct product, Ingredient ingredient, BigDecimal qty) {
+        if (product != null && ingredient != null) {
+            try {
+                productIngredientRepository.save(new ProductIngredient(product, ingredient, qty));
+            } catch (Exception e) {
+                log.warn("Recipe link skipped: {}", e.getMessage());
+            }
+        }
+    }
+
+    private void saveProductIfMissing(String name, String code, BigDecimal price, BigDecimal cost, Integer stock, Integer minStock, Boolean hasRecipe, String image, Integer categoryId) {
+        if (productRepository.findByCode(code).isEmpty()) {
+            try {
+                productRepository.save(new PosProduct(name, code, price, cost, stock, minStock, hasRecipe, image, categoryId));
+            } catch (Exception e) {
+                log.warn("Product {} skip: {}", name, e.getMessage());
+            }
+        }
+    }
+
     private String seedCustomers() {
         if (customerRepository.count() == 0) {
-            customerRepository.saveAll(List.of(
-                    new PosCustomer("Chan Sokha", "012345678", "sokha@gmail.com", "Toul Kork, Phnom Penh", 120),
-                    new PosCustomer("Keo Bopha", "098765432", "bopha@gmail.com", "BKK1, Phnom Penh", 85),
-                    new PosCustomer("Vong Dara", "077112233", "dara@gmail.com", "Daun Penh, Phnom Penh", 210),
-                    new PosCustomer("Meas Sreyneath", "088998877", "sreyneath@gmail.com", "Sen Sok, Phnom Penh", 45)
-            ));
+            try {
+                customerRepository.saveAll(List.of(
+                        new PosCustomer("Chan Sokha", "012345678", "sokha@gmail.com", "Toul Kork, Phnom Penh", 120),
+                        new PosCustomer("Keo Bopha", "098765432", "bopha@gmail.com", "BKK1, Phnom Penh", 85),
+                        new PosCustomer("Vong Dara", "077112233", "dara@gmail.com", "Daun Penh, Phnom Penh", 210),
+                        new PosCustomer("Meas Sreyneath", "088998877", "sreyneath@gmail.com", "Sen Sok, Phnom Penh", 45)
+                ));
+            } catch (Exception e) {
+                log.warn("Customers seeding skipped: {}", e.getMessage());
+            }
         }
         return "Total customers: " + customerRepository.count();
     }
 
     private String seedDiscounts() {
         if (discountRepository.count() == 0) {
-            discountRepository.saveAll(List.of(
-                    new Discount(null, "Member Welcome 10%", "PERCENTAGE", new BigDecimal("10.00"), BigDecimal.ZERO, LocalDate.now().minusDays(10), LocalDate.now().plusMonths(6), true),
-                    new Discount(null, "Big Order $2 Off", "FIXED", new BigDecimal("2.00"), new BigDecimal("15.00"), LocalDate.now().minusDays(10), LocalDate.now().plusMonths(6), true),
-                    new Discount(null, "Happy Hour 15%", "PERCENTAGE", new BigDecimal("15.00"), new BigDecimal("5.00"), LocalDate.now().minusDays(5), LocalDate.now().plusMonths(3), true)
-            ));
+            try {
+                discountRepository.saveAll(List.of(
+                        new Discount(null, "Member Welcome 10%", "PERCENTAGE", new BigDecimal("10.00"), BigDecimal.ZERO, LocalDate.now().minusDays(10), LocalDate.now().plusMonths(6), true),
+                        new Discount(null, "Big Order $2 Off", "FIXED", new BigDecimal("2.00"), new BigDecimal("15.00"), LocalDate.now().minusDays(10), LocalDate.now().plusMonths(6), true),
+                        new Discount(null, "Happy Hour 15%", "PERCENTAGE", new BigDecimal("15.00"), new BigDecimal("5.00"), LocalDate.now().minusDays(5), LocalDate.now().plusMonths(3), true)
+                ));
+            } catch (Exception e) {
+                log.warn("Discounts seeding skipped: {}", e.getMessage());
+            }
         }
         return "Total discounts: " + discountRepository.count();
     }
