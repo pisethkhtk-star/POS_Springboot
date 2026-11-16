@@ -64,6 +64,8 @@ public class ReportService {
         Map<String, double[]> salesByDateMap = new TreeMap<>();
         Map<String, double[]> salesByCategoryMap = new HashMap<>();
         Map<String, double[]> salesByCashierMap = new HashMap<>();
+        Map<String, double[]> productSalesMap = new HashMap<>();
+        Map<String, double[]> paymentMethodMap = new HashMap<>();
 
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd");
 
@@ -76,6 +78,13 @@ public class ReportService {
             totalDiscount += disc;
             totalTax += tx;
 
+            // Payment method breakdown
+            String payMethod = order.getPaymentMethod() != null ? order.getPaymentMethod().name() : "CASH";
+            paymentMethodMap.putIfAbsent(payMethod, new double[]{0, 0});
+            double[] payVals = paymentMethodMap.get(payMethod);
+            payVals[0] += rev;
+            payVals[1] += 1;
+
             double orderCost = 0;
             if (order.getItems() != null) {
                 for (PosOrderItem item : order.getItems()) {
@@ -84,6 +93,13 @@ public class ReportService {
                             item.getProduct().getCost().doubleValue() : 0;
                     double itemCost = unitCost * qty;
                     orderCost += itemCost;
+
+                    String prodName = item.getProduct() != null ? item.getProduct().getName() : "Unknown";
+                    productSalesMap.putIfAbsent(prodName, new double[]{0, 0, 0});
+                    double[] prodVals = productSalesMap.get(prodName);
+                    prodVals[0] += qty;
+                    prodVals[1] += item.getSubtotal().doubleValue();
+                    prodVals[2] += itemCost;
 
                     String catName = (item.getProduct() != null && item.getProduct().getCategory() != null) ?
                             item.getProduct().getCategory().getName() : "Uncategorized";
@@ -113,6 +129,7 @@ public class ReportService {
 
         double netProfit = totalRevenue - totalCostOfGoods;
         double avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
+        double profitMarginPct = totalRevenue > 0 ? (netProfit / totalRevenue) * 100.0 : 0.0;
 
         List<Map<String, Object>> salesByDate = new ArrayList<>();
         for (Map.Entry<String, double[]> entry : salesByDateMap.entrySet()) {
@@ -146,20 +163,63 @@ public class ReportService {
             ));
         }
 
+        // Top Selling Products
+        List<Map<String, Object>> topProducts = new ArrayList<>();
+        for (Map.Entry<String, double[]> entry : productSalesMap.entrySet()) {
+            double q = entry.getValue()[0];
+            double rev = entry.getValue()[1];
+            double cst = entry.getValue()[2];
+            double pft = rev - cst;
+            double pftMargin = rev > 0 ? (pft / rev) * 100.0 : 0.0;
+            topProducts.add(Map.of(
+                "productName", entry.getKey(),
+                "quantity", (int) q,
+                "revenue", Math.round(rev * 100.0) / 100.0,
+                "cost", Math.round(cst * 100.0) / 100.0,
+                "profit", Math.round(pft * 100.0) / 100.0,
+                "marginPct", Math.round(pftMargin * 10.0) / 10.0
+            ));
+        }
+        topProducts.sort((a, b) -> Double.compare(
+            ((Number) b.get("revenue")).doubleValue(), 
+            ((Number) a.get("revenue")).doubleValue()
+        ));
+
+        // Payment Methods Breakdown
+        List<Map<String, Object>> paymentMethods = new ArrayList<>();
+        for (Map.Entry<String, double[]> entry : paymentMethodMap.entrySet()) {
+            double amount = entry.getValue()[0];
+            double count = entry.getValue()[1];
+            double share = totalRevenue > 0 ? (amount / totalRevenue) * 100.0 : 0.0;
+            paymentMethods.add(Map.of(
+                "method", entry.getKey(),
+                "amount", Math.round(amount * 100.0) / 100.0,
+                "count", (int) count,
+                "sharePct", Math.round(share * 10.0) / 10.0
+            ));
+        }
+
         Map<String, Object> summary = new HashMap<>();
         summary.put("totalRevenue", Math.round(totalRevenue * 100.0) / 100.0);
+        summary.put("totalRevenueKhr", Math.round(totalRevenue * 4100));
         summary.put("totalCostOfGoods", Math.round(totalCostOfGoods * 100.0) / 100.0);
+        summary.put("totalCostOfGoodsKhr", Math.round(totalCostOfGoods * 4100));
         summary.put("totalDiscount", Math.round(totalDiscount * 100.0) / 100.0);
         summary.put("totalTax", Math.round(totalTax * 100.0) / 100.0);
         summary.put("netProfit", Math.round(netProfit * 100.0) / 100.0);
+        summary.put("netProfitKhr", Math.round(netProfit * 4100));
+        summary.put("profitMarginPct", Math.round(profitMarginPct * 10.0) / 10.0);
         summary.put("orderCount", orderCount);
         summary.put("avgOrderValue", Math.round(avgOrderValue * 100.0) / 100.0);
+        summary.put("exchangeRate", 4100);
 
         Map<String, Object> response = new HashMap<>();
         response.put("summary", summary);
         response.put("salesByDate", salesByDate);
         response.put("salesByCategory", salesByCategory);
         response.put("salesByCashier", salesByCashier);
+        response.put("topProducts", topProducts);
+        response.put("paymentMethods", paymentMethods);
 
         return response;
     }
