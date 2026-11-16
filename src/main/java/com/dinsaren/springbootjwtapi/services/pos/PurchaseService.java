@@ -78,7 +78,12 @@ public class PurchaseService {
         purchase.setUserId(currentUserId);
         purchase.setTotalAmount(totalAmount);
         purchase.setNote(request.getNote());
-        purchase.setStatus("PENDING");
+        
+        String initialStatus = "PENDING";
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            initialStatus = request.getStatus().trim().toUpperCase();
+        }
+        purchase.setStatus(initialStatus);
 
         Purchase savedPurchase = purchaseRepository.save(purchase);
 

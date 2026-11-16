@@ -45,7 +45,7 @@ public class Purchase extends BaseEntity {
 
     private String note;
 
-    @Column(nullable = false)
+    @Column(name = "status")
     private String status = "PENDING"; // "PENDING", "RECEIVED", "CANCELLED"
 
     @Column(name = "received_at")
@@ -62,9 +62,16 @@ public class Purchase extends BaseEntity {
     @JsonIgnoreProperties("purchase")
     private List<PurchaseItem> items = new ArrayList<>();
 
+    @PrePersist
+    public void prePersist() {
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "PENDING";
+        }
+    }
+
     @PostLoad
     public void postLoad() {
-        if (this.status == null) {
+        if (this.status == null || this.status.isBlank()) {
             this.status = "RECEIVED";
         }
     }

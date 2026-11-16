@@ -7,5 +7,6 @@ import java.util.List;
 public class PurchaseCreateRequest {
     private Integer supplierId;
     private String note;
+    private String status; // defaults to "PENDING"
     private List<PurchaseItemRequest> items;
 }
