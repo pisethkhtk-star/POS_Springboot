@@ -3,16 +3,20 @@ package com.dinsaren.springbootjwtapi.services.pos;
 import com.dinsaren.springbootjwtapi.models.pos.OrderStatus;
 import com.dinsaren.springbootjwtapi.models.pos.PosOrder;
 import com.dinsaren.springbootjwtapi.models.pos.PosOrderItem;
+import com.dinsaren.springbootjwtapi.models.pos.PosProduct;
+import com.dinsaren.springbootjwtapi.repository.pos.PosOrderItemRepository;
 import com.dinsaren.springbootjwtapi.repository.pos.PosOrderRepository;
+import com.dinsaren.springbootjwtapi.repository.pos.PosProductRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -20,25 +24,31 @@ import java.util.*;
 public class ReportService {
 
     private final PosOrderRepository posOrderRepository;
+    private final PosOrderItemRepository posOrderItemRepository;
+    private final PosProductRepository posProductRepository;
 
+    @Transactional(readOnly = true)
     public Map<String, Object> getReports(String startDateStr, String endDateStr) {
-        LocalDateTime startDate = null;
+        Date startDate = null;
         if (startDateStr != null && !startDateStr.trim().isEmpty()) {
             try {
-                startDate = LocalDate.parse(startDateStr.trim()).atStartOfDay();
+                LocalDate ld = LocalDate.parse(startDateStr.trim());
+                startDate = Timestamp.valueOf(ld.atStartOfDay());
             } catch (Exception ignored) {}
         }
 
-        LocalDateTime endDate = null;
+        Date endDate = null;
         if (endDateStr != null && !endDateStr.trim().isEmpty()) {
             try {
-                endDate = LocalDate.parse(endDateStr.trim()).atTime(23, 59, 59, 999000000);
+                LocalDate ld = LocalDate.parse(endDateStr.trim());
+                endDate = Timestamp.valueOf(ld.atTime(23, 59, 59, 999000000));
             } catch (Exception ignored) {}
         }
 
-        final LocalDateTime finalStartDate = startDate;
-        final LocalDateTime finalEndDate = endDate;
+        final Date finalStartDate = startDate;
+        final Date finalEndDate = endDate;
 
+        // Query only COMPLETED orders within the specified date range
         Specification<PosOrder> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("status"), OrderStatus.COMPLETED));
@@ -70,9 +80,9 @@ public class ReportService {
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd");
 
         for (PosOrder order : orders) {
-            double rev = order.getTotal().doubleValue();
-            double disc = order.getDiscount() != null ? order.getDiscount().doubleValue() : 0;
-            double tx = order.getTax() != null ? order.getTax().doubleValue() : 0;
+            double rev = order.getTotal() != null ? order.getTotal().doubleValue() : 0.0;
+            double disc = order.getDiscount() != null ? order.getDiscount().doubleValue() : 0.0;
+            double tx = order.getTax() != null ? order.getTax().doubleValue() : 0.0;
 
             totalRevenue += rev;
             totalDiscount += disc;
@@ -86,27 +96,37 @@ public class ReportService {
             payVals[1] += 1;
 
             double orderCost = 0;
-            if (order.getItems() != null) {
-                for (PosOrderItem item : order.getItems()) {
-                    int qty = item.getQuantity();
-                    double unitCost = item.getProduct() != null && item.getProduct().getCost() != null ?
-                            item.getProduct().getCost().doubleValue() : 0;
+            List<PosOrderItem> items = (order.getItems() != null && !order.getItems().isEmpty())
+                    ? order.getItems()
+                    : posOrderItemRepository.findByOrderId(order.getId());
+
+            if (items != null) {
+                for (PosOrderItem item : items) {
+                    int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+                    
+                    PosProduct product = item.getProduct();
+                    if (product == null && item.getProductId() != null) {
+                        product = posProductRepository.findById(item.getProductId()).orElse(null);
+                    }
+
+                    double unitCost = (product != null && product.getCost() != null)
+                            ? product.getCost().doubleValue() : 0.0;
                     double itemCost = unitCost * qty;
                     orderCost += itemCost;
 
-                    String prodName = item.getProduct() != null ? item.getProduct().getName() : "Unknown";
+                    String prodName = product != null ? product.getName() : "Product #" + item.getProductId();
                     productSalesMap.putIfAbsent(prodName, new double[]{0, 0, 0});
                     double[] prodVals = productSalesMap.get(prodName);
-                    prodVals[0] += qty;
-                    prodVals[1] += item.getSubtotal().doubleValue();
-                    prodVals[2] += itemCost;
+                    prodVals[0] += qty; // index 0: Total quantity
+                    prodVals[1] += item.getSubtotal() != null ? item.getSubtotal().doubleValue() : (item.getPrice() != null ? item.getPrice().doubleValue() * qty : 0.0); // index 1: Revenue
+                    prodVals[2] += itemCost; // index 2: Cost
 
-                    String catName = (item.getProduct() != null && item.getProduct().getCategory() != null) ?
-                            item.getProduct().getCategory().getName() : "Uncategorized";
+                    String catName = (product != null && product.getCategory() != null)
+                            ? product.getCategory().getName() : "Uncategorized";
 
                     salesByCategoryMap.putIfAbsent(catName, new double[]{0, 0});
                     double[] catVals = salesByCategoryMap.get(catName);
-                    catVals[0] += item.getSubtotal().doubleValue();
+                    catVals[0] += item.getSubtotal() != null ? item.getSubtotal().doubleValue() : 0.0;
                     catVals[1] += qty;
                 }
             }
@@ -128,7 +148,7 @@ public class ReportService {
         }
 
         double netProfit = totalRevenue - totalCostOfGoods;
-        double avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
+        double avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0.0;
         double profitMarginPct = totalRevenue > 0 ? (netProfit / totalRevenue) * 100.0 : 0.0;
 
         List<Map<String, Object>> salesByDate = new ArrayList<>();
@@ -163,7 +183,7 @@ public class ReportService {
             ));
         }
 
-        // Top Selling Products
+        // Top Selling Products - strictly sorted by Quantity (QTY Sold) descending
         List<Map<String, Object>> topProducts = new ArrayList<>();
         for (Map.Entry<String, double[]> entry : productSalesMap.entrySet()) {
             double q = entry.getValue()[0];
@@ -180,9 +200,10 @@ public class ReportService {
                 "marginPct", Math.round(pftMargin * 10.0) / 10.0
             ));
         }
-        topProducts.sort((a, b) -> Double.compare(
-            ((Number) b.get("revenue")).doubleValue(), 
-            ((Number) a.get("revenue")).doubleValue()
+        // Sort strictly by QTY (quantity) descending
+        topProducts.sort((a, b) -> Integer.compare(
+            ((Number) b.get("quantity")).intValue(), 
+            ((Number) a.get("quantity")).intValue()
         ));
 
         // Payment Methods Breakdown
