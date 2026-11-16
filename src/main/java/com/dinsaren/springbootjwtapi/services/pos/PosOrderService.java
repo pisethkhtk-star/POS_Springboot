@@ -143,7 +143,6 @@ public class PosOrderService {
 
         // Auto-deduct ingredient/product stock inside this single transaction
         stockService.deductStockForOrder(savedOrder, currentUserId);
-        }
 
         // Award loyalty points to customer (1 point per dollar spent)
         if (request.getCustomerId() != null) {
