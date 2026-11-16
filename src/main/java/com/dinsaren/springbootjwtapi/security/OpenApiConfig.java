@@ -2,16 +2,21 @@ package com.dinsaren.springbootjwtapi.security;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @Configuration
 public class OpenApiConfig {
+
+    static {
+        SpringDocUtils.getConfig()
+                .addAnnotationsToIgnore(AuthenticationPrincipal.class);
+    }
 
     private static final String BEARER_AUTH = "bearerAuth";
 
@@ -19,14 +24,9 @@ public class OpenApiConfig {
     public OpenAPI openApi() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Spring Boot JWT API")
-                        .description("REST API with JWT Authentication")
-                        .version("v1.0")
-                        .contact(new Contact()
-                                .name("Mr. SAREN")
-                                .url("https://postfreeapp.com")
-                                .email("dinsarenkh@gmail.com"))
-                        .license(new License().name("Apache 2.0").url("https://www.apache.org/licenses/LICENSE-2.0")))
+                        .title("POS System REST API")
+                        .description("Point of Sale (POS) REST API with JWT Authentication and Ingredient Management")
+                        .version("v1.0"))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH))
                 .components(new Components()
                         .addSecuritySchemes(BEARER_AUTH, new SecurityScheme()
@@ -34,6 +34,6 @@ public class OpenApiConfig {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("Paste your JWT token here. Obtain it from POST /api/oauth/token")));
+                                .description("Paste your JWT token here.")));
     }
 }

@@ -1,53 +1,42 @@
 server:
-  port: 30033
+  port: ${PORT:5000}
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: always
 
 spring:
   application:
-    name: content-management-service
+    name: pos-system-service
 
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/content_management_db
-    username: postgres
-    password: postgres
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/pos_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
 
   jpa:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: create
+    show-sql: false
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 0
-
-  otp:
-    sms:
-      expire: 10
-      template: "This is one time security code. Don't tell anyone."
-      enbaled: Y
+    enabled: false
 
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
 
-  upload:
-    server:
-      path: ./upload/images/
-    client:
-      path: /image/**
-
 post:
   free:
     app:
-      jwtSecret: ebe8910a-08c0-11ed-861d-0242ac120002
-      jwtExpirationMs: 300000
-      jwtRefreshExpirationMs: 86400000
+      jwtSecret: ${JWT_SECRET:ebe8910a08c011ed861d0242ac120002ebe8910a08c011ed861d0242ac120002}
+      jwtExpirationMs: 86400000
+      jwtRefreshExpirationMs: 604800000
 
 springdoc:
   swagger-ui:
@@ -58,7 +47,7 @@ springdoc:
     try-it-out-enabled: true
   api-docs:
     path: /v3/api-docs
-  packages-to-scan: com.dinsaren.springbootjwtapi.controllers
+  packages-to-scan: com.dinsaren.springbootjwtapi.controllers.rest.pos
   paths-to-match: /**
 
 api:

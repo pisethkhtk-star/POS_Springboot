@@ -22,11 +22,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user;
         Optional<User> userName = userRepository.findByUsernameAndStatus(username, Constants.STATUS_ACTIVE);
-        if (!userName.isPresent()) {
-            user = userRepository.findByPhoneNumberAndStatus(username, Constants.STATUS_ACTIVE)
-                    .orElseThrow(() -> new UsernameNotFoundException("User Not Found with phone: " + username));
-        } else {
+        if (userName.isPresent()) {
             user = userName.get();
+        } else {
+            user = userRepository.findByPhoneNumberAndStatus(username, Constants.STATUS_ACTIVE)
+                    .or(() -> userRepository.findByEmail(username))
+                    .or(() -> userRepository.findByUsername(username))
+                    .orElseThrow(() -> new UsernameNotFoundException(
+                            "User Not Found with username/phone/email: " + username));
         }
 
         return UserDetailsImpl.build(user);

@@ -1,0 +1,8 @@
+{
+  "storeName" : "coffee system",
+  "storeAddress" : "123 Main Street, Phnom Penh",
+  "storePhone" : "012-345-678",
+  "taxRate" : 10.0,
+  "receiptHeader" : "Thank you for shopping with us!",
+  "receiptFooter" : "Please come again!"
+}

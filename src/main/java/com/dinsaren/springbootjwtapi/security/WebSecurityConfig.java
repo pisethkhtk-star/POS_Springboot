@@ -19,6 +19,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -83,14 +84,29 @@ public class WebSecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/oauth/**",
-                                "/api/public/**",
-                                "/openapi/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/webjars/**",
-                                "/actuator/health/**"
+                                AntPathRequestMatcher.antMatcher("/v3/api-docs/**"),
+                                AntPathRequestMatcher.antMatcher("/v3/api-docs"),
+                                AntPathRequestMatcher.antMatcher("/swagger-ui/**"),
+                                AntPathRequestMatcher.antMatcher("/swagger-ui.html"),
+                                AntPathRequestMatcher.antMatcher("/swagger-ui/index.html"),
+                                AntPathRequestMatcher.antMatcher("/swagger"),
+                                AntPathRequestMatcher.antMatcher("/api/swagger-ui/**"),
+                                AntPathRequestMatcher.antMatcher("/api/swagger-ui.html"),
+                                AntPathRequestMatcher.antMatcher("/api/swagger-ui/index.html"),
+                                AntPathRequestMatcher.antMatcher("/api/v3/api-docs/**"),
+                                AntPathRequestMatcher.antMatcher("/api/v3/api-docs"),
+                                AntPathRequestMatcher.antMatcher("/swagger-resources/**"),
+                                AntPathRequestMatcher.antMatcher("/webjars/**"),
+                                AntPathRequestMatcher.antMatcher("/error"),
+                                AntPathRequestMatcher.antMatcher("/health"),
+                                AntPathRequestMatcher.antMatcher("/api/health"),
+                                AntPathRequestMatcher.antMatcher("/api/seed/**"),
+                                AntPathRequestMatcher.antMatcher("/seed/**"),
+                                AntPathRequestMatcher.antMatcher("/api/auth/**"),
+                                AntPathRequestMatcher.antMatcher("/api/khqr/**"),
+                                AntPathRequestMatcher.antMatcher("/api/upload/**"),
+                                AntPathRequestMatcher.antMatcher("/uploads/**"),
+                                AntPathRequestMatcher.antMatcher("/actuator/health/**")
                         ).permitAll()
                         .anyRequest().authenticated()
                 );

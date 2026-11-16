@@ -1,0 +1,43 @@
+package com.dinsaren.springbootjwtapi.controllers.rest.pos;
+
+import com.dinsaren.springbootjwtapi.models.pos.InventoryLog;
+import com.dinsaren.springbootjwtapi.payload.pos.InventoryAdjustRequest;
+import com.dinsaren.springbootjwtapi.security.services.UserDetailsImpl;
+import com.dinsaren.springbootjwtapi.services.pos.InventoryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@CrossOrigin(origins = "*", maxAge = 3600)
+@RestController
+@RequestMapping("/api/inventory")
+@Slf4j
+@Tag(name = "POS Inventory", description = "Track stock adjustments and audit history")
+@RequiredArgsConstructor
+public class PosInventoryController {
+
+    private final InventoryService inventoryService;
+
+    @Operation(summary = "Get all inventory audit logs")
+    @GetMapping
+    public ResponseEntity<List<InventoryLog>> getAll() {
+        return ResponseEntity.ok(inventoryService.getAllLogs());
+    }
+
+    @Operation(summary = "Adjust stock for product or ingredient")
+    @PostMapping
+    public ResponseEntity<Object> adjust(
+        @RequestBody InventoryAdjustRequest request,
+        @io.swagger.v3.oas.annotations.Parameter(hidden = true) @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        Integer userId = user != null ? user.getId() : 1;
+        String userName = user != null ? user.getUsername() : "Admin";
+        return ResponseEntity.ok(inventoryService.adjustStock(request, userId, userName));
+    }
+}
