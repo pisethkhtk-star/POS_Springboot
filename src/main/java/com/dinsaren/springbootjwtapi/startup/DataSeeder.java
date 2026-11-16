@@ -35,10 +35,19 @@ public class DataSeeder implements ApplicationRunner {
     private final PosCustomerRepository customerRepository;
     private final SupplierRepository supplierRepository;
     private final DiscountRepository discountRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(ApplicationArguments args) {
         try {
+            if (jdbcTemplate != null) {
+                try {
+                    jdbcTemplate.execute("ALTER TABLE purchase_items ALTER COLUMN ingredient_id DROP NOT NULL;");
+                    jdbcTemplate.execute("ALTER TABLE purchase_items ADD COLUMN IF NOT EXISTS product_id INTEGER;");
+                } catch (Exception e) {
+                    log.warn("Notice checking purchase_items schema: {}", e.getMessage());
+                }
+            }
             log.info("Checking and seeding default POS data...");
             seedAll();
             log.info("POS Data Seeding completed successfully.");

@@ -24,12 +24,19 @@ public class PurchaseItem extends BaseEntity {
     @JsonIgnore
     private Purchase purchase;
 
-    @Column(name = "ingredient_id", nullable = false)
+    @Column(name = "ingredient_id", nullable = true)
     private Integer ingredientId;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ingredient_id", insertable = false, updatable = false)
     private Ingredient ingredient;
+
+    @Column(name = "product_id", nullable = true)
+    private Integer productId;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "product_id", insertable = false, updatable = false)
+    private PosProduct product;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal quantity;
@@ -44,6 +51,15 @@ public class PurchaseItem extends BaseEntity {
         this.purchase = purchase;
         this.ingredientId = ingredient.getId();
         this.ingredient = ingredient;
+        this.quantity = quantity;
+        this.cost = cost;
+        this.subtotal = subtotal;
+    }
+
+    public PurchaseItem(Purchase purchase, PosProduct product, BigDecimal quantity, BigDecimal cost, BigDecimal subtotal) {
+        this.purchase = purchase;
+        this.productId = product.getId();
+        this.product = product;
         this.quantity = quantity;
         this.cost = cost;
         this.subtotal = subtotal;
