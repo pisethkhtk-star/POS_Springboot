@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,7 +45,27 @@ public class Purchase extends BaseEntity {
 
     private String note;
 
+    @Column(nullable = false)
+    private String status = "PENDING"; // "PENDING", "RECEIVED", "CANCELLED"
+
+    @Column(name = "received_at")
+    private LocalDateTime receivedAt;
+
+    @Column(name = "received_by_id")
+    private Integer receivedById;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "received_by_id", insertable = false, updatable = false)
+    private User receivedBy;
+
     @OneToMany(mappedBy = "purchase", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonIgnoreProperties("purchase")
     private List<PurchaseItem> items = new ArrayList<>();
+
+    @PostLoad
+    public void postLoad() {
+        if (this.status == null) {
+            this.status = "RECEIVED";
+        }
+    }
 }

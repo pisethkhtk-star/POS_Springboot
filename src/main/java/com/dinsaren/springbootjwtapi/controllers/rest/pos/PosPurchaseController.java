@@ -2,6 +2,7 @@ package com.dinsaren.springbootjwtapi.controllers.rest.pos;
 
 import com.dinsaren.springbootjwtapi.models.pos.Purchase;
 import com.dinsaren.springbootjwtapi.payload.pos.PurchaseCreateRequest;
+import com.dinsaren.springbootjwtapi.payload.pos.PurchaseReceiveRequest;
 import com.dinsaren.springbootjwtapi.security.services.UserDetailsImpl;
 import com.dinsaren.springbootjwtapi.services.pos.PurchaseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,15 +20,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/purchases")
 @Slf4j
-@Tag(name = "POS Purchases", description = "Stock IN raw ingredients from suppliers")
+@Tag(name = "POS Purchases", description = "Stock IN raw ingredients and direct products from suppliers")
 @RequiredArgsConstructor
 public class PosPurchaseController {
 
     private final PurchaseService purchaseService;
 
-    @Operation(summary = "Get all purchases")
+    @Operation(summary = "Get all purchases with optional status filter (PENDING, RECEIVED, CANCELLED)")
     @GetMapping
-    public ResponseEntity<List<Purchase>> getAll() {
+    public ResponseEntity<List<Purchase>> getAll(@RequestParam(required = false) String status) {
+        if (status != null && !status.isBlank()) {
+            return ResponseEntity.ok(purchaseService.getPurchasesByStatus(status));
+        }
         return ResponseEntity.ok(purchaseService.getAllPurchases());
     }
 
@@ -37,7 +41,7 @@ public class PosPurchaseController {
         return ResponseEntity.ok(purchaseService.getPurchaseById(id));
     }
 
-    @Operation(summary = "Create raw ingredient purchase order")
+    @Operation(summary = "Create purchase order (saves in PENDING status, stock NOT added yet)")
     @PostMapping
     public ResponseEntity<Purchase> create(
         @RequestBody PurchaseCreateRequest request,
@@ -45,5 +49,26 @@ public class PosPurchaseController {
     ) {
         Integer userId = user != null ? user.getId() : 1;
         return ResponseEntity.status(HttpStatus.CREATED).body(purchaseService.createPurchase(request, userId));
+    }
+
+    @Operation(summary = "Receive purchase items into stock (adds stock, updates weighted cost & expiry)")
+    @PostMapping("/{id}/receive")
+    public ResponseEntity<Purchase> receive(
+        @PathVariable Integer id,
+        @RequestBody(required = false) PurchaseReceiveRequest request,
+        @io.swagger.v3.oas.annotations.Parameter(hidden = true) @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        Integer userId = user != null ? user.getId() : 1;
+        return ResponseEntity.ok(purchaseService.receivePurchase(id, request, userId));
+    }
+
+    @Operation(summary = "Cancel pending purchase order")
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<Purchase> cancel(
+        @PathVariable Integer id,
+        @io.swagger.v3.oas.annotations.Parameter(hidden = true) @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        Integer userId = user != null ? user.getId() : 1;
+        return ResponseEntity.ok(purchaseService.cancelPurchase(id, userId));
     }
 }

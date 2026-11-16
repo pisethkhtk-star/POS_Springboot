@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,9 @@ public class Ingredient extends BaseEntity {
      */
     @Column(precision = 15, scale = 6)
     private BigDecimal cost = BigDecimal.ZERO;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
 
     @OneToMany(mappedBy = "ingredient", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<IngredientPurchaseUnit> purchaseUnits = new ArrayList<>();

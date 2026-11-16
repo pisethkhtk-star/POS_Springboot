@@ -128,22 +128,42 @@ public class DataSeeder implements ApplicationRunner {
     private String seedPermissions() {
         List<String> adminPages = List.of(
                 "/", "/pos", "/products", "/categories", "/ingredients",
-                "/discounts", "/inventory", "/purchases", "/suppliers",
+                "/discounts", "/inventory", "/purchases", "/receive-stock", "/suppliers",
                 "/customers", "/orders", "/reports", "/users", "/settings", "/roles"
         );
         List<String> managerPages = List.of(
                 "/", "/pos", "/products", "/categories", "/ingredients",
-                "/discounts", "/inventory", "/purchases", "/suppliers",
+                "/discounts", "/inventory", "/purchases", "/receive-stock", "/suppliers",
                 "/customers", "/orders"
         );
         List<String> cashierPages = List.of("/pos");
 
         if (rolePermissionRepository.findByRole("ADMIN").isEmpty()) {
             rolePermissionRepository.save(new RolePermission("ADMIN", adminPages));
+        } else {
+            rolePermissionRepository.findByRole("ADMIN").ifPresent(rp -> {
+                if (!rp.getPages().contains("/receive-stock")) {
+                    List<String> updated = new ArrayList<>(rp.getPages());
+                    updated.add("/receive-stock");
+                    rp.setPages(updated);
+                    rolePermissionRepository.save(rp);
+                }
+            });
         }
+
         if (rolePermissionRepository.findByRole("MANAGER").isEmpty()) {
             rolePermissionRepository.save(new RolePermission("MANAGER", managerPages));
+        } else {
+            rolePermissionRepository.findByRole("MANAGER").ifPresent(rp -> {
+                if (!rp.getPages().contains("/receive-stock")) {
+                    List<String> updated = new ArrayList<>(rp.getPages());
+                    updated.add("/receive-stock");
+                    rp.setPages(updated);
+                    rolePermissionRepository.save(rp);
+                }
+            });
         }
+
         if (rolePermissionRepository.findByRole("CASHIER").isEmpty()) {
             rolePermissionRepository.save(new RolePermission("CASHIER", cashierPages));
         }

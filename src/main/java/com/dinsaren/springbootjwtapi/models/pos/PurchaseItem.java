@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -47,6 +48,9 @@ public class PurchaseItem extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
     public PurchaseItem(Purchase purchase, Ingredient ingredient, BigDecimal quantity, BigDecimal cost, BigDecimal subtotal) {
         this.purchase = purchase;
         this.ingredientId = ingredient.getId();
@@ -56,6 +60,16 @@ public class PurchaseItem extends BaseEntity {
         this.subtotal = subtotal;
     }
 
+    public PurchaseItem(Purchase purchase, Ingredient ingredient, BigDecimal quantity, BigDecimal cost, BigDecimal subtotal, LocalDate expiryDate) {
+        this.purchase = purchase;
+        this.ingredientId = ingredient.getId();
+        this.ingredient = ingredient;
+        this.quantity = quantity;
+        this.cost = cost;
+        this.subtotal = subtotal;
+        this.expiryDate = expiryDate;
+    }
+
     public PurchaseItem(Purchase purchase, PosProduct product, BigDecimal quantity, BigDecimal cost, BigDecimal subtotal) {
         this.purchase = purchase;
         this.productId = product.getId();
@@ -63,5 +77,15 @@ public class PurchaseItem extends BaseEntity {
         this.quantity = quantity;
         this.cost = cost;
         this.subtotal = subtotal;
+    }
+
+    public PurchaseItem(Purchase purchase, PosProduct product, BigDecimal quantity, BigDecimal cost, BigDecimal subtotal, LocalDate expiryDate) {
+        this.purchase = purchase;
+        this.productId = product.getId();
+        this.product = product;
+        this.quantity = quantity;
+        this.cost = cost;
+        this.subtotal = subtotal;
+        this.expiryDate = expiryDate;
     }
 }
