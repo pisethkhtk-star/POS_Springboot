@@ -30,23 +30,27 @@ public class PosProductService {
     private final PosOrderItemRepository posOrderItemRepository;
 
     public List<PosProduct> searchProducts(String query, String categoryIdStr) {
-        Integer categoryId = null;
+        Integer categoryId = null;// តម្លៃដើមឲ្យ null
+        // ចាប់ check មើលnull category អត់​ មាន​ all អត់,equalsIgnoreCase និង all
+        // មិនប្រកាន់អក្សរតូចធំ
         if (categoryIdStr != null && !categoryIdStr.trim().isEmpty() && !"all".equalsIgnoreCase(categoryIdStr.trim())) {
             try {
-                categoryId = Integer.parseInt(categoryIdStr.trim());
-            } catch (NumberFormatException ignored) {}
+                categoryId = Integer.parseInt(categoryIdStr.trim());// បើមានcategory return categoryId មានតម្លៃ =
+                                                                    // categoryIdStr.trim ដែលគ្មាន space
+            } catch (NumberFormatException ignored) {
+            }
         }
 
-        boolean hasQuery = query != null && !query.trim().isEmpty();
-        String cleanQuery = hasQuery ? query.trim() : null;
+        boolean hasQuery = query != null && !query.trim().isEmpty();// ​ឆែកមើលមាន query អត់
+        String cleanQuery = hasQuery ? query.trim() : null;// កាត់space ចោល
 
-        if (hasQuery && categoryId != null) {
+        if (hasQuery && categoryId != null) {// បើមានទាំង២ search by nameOrCodeAndCategoryId
             return posProductRepository.searchByNameOrCodeAndCategoryId(cleanQuery, categoryId);
-        } else if (hasQuery) {
+        } else if (hasQuery) {// បើមានតែquery search by nameOrCode
             return posProductRepository.searchByNameOrCode(cleanQuery);
-        } else if (categoryId != null) {
+        } else if (categoryId != null) {// បើមានតែcategory search by categoryId OrderByNameAsc
             return posProductRepository.findByCategoryIdOrderByNameAsc(categoryId);
-        } else {
+        } else {// បើមិនមាន search all
             return posProductRepository.findAllByOrderByNameAsc();
         }
     }
@@ -63,8 +67,10 @@ public class PosProductService {
             if (p.getCode() != null && p.getCode().matches("^\\d{14}$")) {
                 try {
                     long val = Long.parseLong(p.getCode());
-                    if (val > maxCode) maxCode = val;
-                } catch (NumberFormatException ignored) {}
+                    if (val > maxCode)
+                        maxCode = val;
+                } catch (NumberFormatException ignored) {
+                }
             }
         }
         return String.format("%014d", maxCode + 1);
@@ -73,15 +79,15 @@ public class PosProductService {
     @Transactional
     public PosProduct createProduct(ProductRequest request, Integer currentUserId) {
         if (request.getName() == null || request.getName().trim().isEmpty() ||
-            request.getPrice() == null || request.getCategoryId() == null) {
+                request.getPrice() == null || request.getCategoryId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing required fields");
         }
 
         categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category does not exist"));
 
-        String code = request.getCode() != null ? request.getCode().trim() :
-                (request.getSku() != null ? request.getSku().trim() : "");
+        String code = request.getCode() != null ? request.getCode().trim()
+                : (request.getSku() != null ? request.getSku().trim() : "");
 
         if (code.isEmpty()) {
             code = generateNext14DigitCode();
@@ -95,8 +101,8 @@ public class PosProductService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product code already exists");
         }
 
-        boolean hasRecipe = request.getHasRecipe() != null ? request.getHasRecipe() :
-                (request.getIngredients() != null && !request.getIngredients().isEmpty());
+        boolean hasRecipe = request.getHasRecipe() != null ? request.getHasRecipe()
+                : (request.getIngredients() != null && !request.getIngredients().isEmpty());
 
         PosProduct product = new PosProduct();
         product.setName(request.getName().trim());
@@ -123,7 +129,8 @@ public class PosProductService {
         if (hasRecipe && request.getIngredients() != null && !request.getIngredients().isEmpty()) {
             Map<Integer, BigDecimal> ingredientMap = new HashMap<>();
             for (ProductIngredientDTO dto : request.getIngredients()) {
-                if (dto.getIngredientId() != null && dto.getQuantity() != null && dto.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                if (dto.getIngredientId() != null && dto.getQuantity() != null
+                        && dto.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
                     ingredientMap.merge(dto.getIngredientId(), dto.getQuantity(), BigDecimal::add);
                 }
             }
@@ -152,15 +159,16 @@ public class PosProductService {
         PosProduct product = posProductRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
 
-        String code = request.getCode() != null ? request.getCode().trim() :
-                (request.getSku() != null ? request.getSku().trim() : null);
+        String code = request.getCode() != null ? request.getCode().trim()
+                : (request.getSku() != null ? request.getSku().trim() : null);
 
         if (code != null && !code.equals(product.getCode())) {
             if (code.length() > 14) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product code cannot exceed 14 characters");
             }
             if (posProductRepository.existsByCode(code)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product code is already used by another product");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Product code is already used by another product");
             }
             product.setCode(code);
         }
@@ -188,7 +196,8 @@ public class PosProductService {
         if (hasRecipe && request.getIngredients() != null) {
             Map<Integer, BigDecimal> ingredientMap = new HashMap<>();
             for (ProductIngredientDTO dto : request.getIngredients()) {
-                if (dto.getIngredientId() != null && dto.getQuantity() != null && dto.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                if (dto.getIngredientId() != null && dto.getQuantity() != null
+                        && dto.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
                     ingredientMap.merge(dto.getIngredientId(), dto.getQuantity(), BigDecimal::add);
                 }
             }
@@ -213,9 +222,12 @@ public class PosProductService {
                 product.setCost(request.getCost());
             }
         } else {
-            if (request.getStock() != null) product.setStock(request.getStock());
-            if (request.getMinStock() != null) product.setMinStock(request.getMinStock());
-            if (request.getCost() != null) product.setCost(request.getCost());
+            if (request.getStock() != null)
+                product.setStock(request.getStock());
+            if (request.getMinStock() != null)
+                product.setMinStock(request.getMinStock());
+            if (request.getCost() != null)
+                product.setCost(request.getCost());
         }
 
         return posProductRepository.save(product);
@@ -251,8 +263,8 @@ public class PosProductService {
 
         for (Map<String, Object> item : products) {
             String name = item.get("name") != null ? item.get("name").toString().trim() : "";
-            String code = item.get("code") != null ? item.get("code").toString().trim() :
-                    (item.get("sku") != null ? item.get("sku").toString().trim() : "");
+            String code = item.get("code") != null ? item.get("code").toString().trim()
+                    : (item.get("sku") != null ? item.get("sku").toString().trim() : "");
             String categoryName = item.get("categoryName") != null ? item.get("categoryName").toString().trim() : "";
             Object priceObj = item.get("price");
             Object costObj = item.get("cost");
@@ -320,8 +332,7 @@ public class PosProductService {
         }
 
         return Map.of(
-            "message", "Import completed: " + success + " successfully added, " + skipped + " skipped.",
-            "results", Map.of("success", success, "skipped", skipped, "errors", errors)
-        );
+                "message", "Import completed: " + success + " successfully added, " + skipped + " skipped.",
+                "results", Map.of("success", success, "skipped", skipped, "errors", errors));
     }
 }
