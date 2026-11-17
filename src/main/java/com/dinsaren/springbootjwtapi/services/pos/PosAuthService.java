@@ -115,6 +115,7 @@ public class PosAuthService {
                 .httpOnly(true)
                 .path("/")
                 .maxAge(0)
+                .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return Map.of("success", true);
