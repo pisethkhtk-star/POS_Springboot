@@ -44,6 +44,18 @@ public class DataSeeder implements ApplicationRunner {
                 try {
                     jdbcTemplate.execute("ALTER TABLE purchase_items ALTER COLUMN ingredient_id DROP NOT NULL;");
                     jdbcTemplate.execute("ALTER TABLE purchase_items ADD COLUMN IF NOT EXISTS product_id INTEGER;");
+                    jdbcTemplate.execute("ALTER TABLE purchase_items ADD COLUMN IF NOT EXISTS remaining_quantity NUMERIC(15, 4);");
+                    jdbcTemplate.execute("UPDATE purchase_items SET remaining_quantity = quantity WHERE remaining_quantity IS NULL;");
+                    jdbcTemplate.execute("UPDATE purchases SET status = 'RECEIVED' WHERE status IS NULL;");
+                    // Seed sample expiry dates if null so user sees realistic expiry data immediately
+                    jdbcTemplate.execute("UPDATE products SET expiry_date = CURRENT_DATE - INTERVAL '2 days' WHERE code = '10000000000007' AND expiry_date IS NULL;");
+                    jdbcTemplate.execute("UPDATE products SET expiry_date = CURRENT_DATE + INTERVAL '4 days' WHERE code = '10000000000008' AND expiry_date IS NULL;");
+                    jdbcTemplate.execute("UPDATE products SET expiry_date = CURRENT_DATE + INTERVAL '25 days' WHERE code = '10000000000005' AND expiry_date IS NULL;");
+                    jdbcTemplate.execute("UPDATE products SET expiry_date = CURRENT_DATE + INTERVAL '30 days' WHERE code = '10000000000006' AND expiry_date IS NULL;");
+                    jdbcTemplate.execute("UPDATE ingredients SET expiry_date = CURRENT_DATE + INTERVAL '3 days' WHERE code = 'ING-002' AND expiry_date IS NULL;");
+                    jdbcTemplate.execute("UPDATE ingredients SET expiry_date = CURRENT_DATE + INTERVAL '60 days' WHERE code = 'ING-001' AND expiry_date IS NULL;");
+                    jdbcTemplate.execute("UPDATE ingredients SET expiry_date = CURRENT_DATE + INTERVAL '90 days' WHERE code = 'ING-004' AND expiry_date IS NULL;");
+                    jdbcTemplate.execute("UPDATE ingredients SET expiry_date = CURRENT_DATE - INTERVAL '1 day' WHERE code = 'ING-003' AND expiry_date IS NULL;");
                 } catch (Exception e) {
                     log.warn("Notice checking purchase_items schema: {}", e.getMessage());
                 }
@@ -67,8 +79,30 @@ public class DataSeeder implements ApplicationRunner {
         try { summary.put("products", seedProductsWithRecipes()); } catch (Exception e) { log.warn("Product seeding: {}", e.getMessage()); }
         try { summary.put("customers", seedCustomers()); } catch (Exception e) { log.warn("Customer seeding: {}", e.getMessage()); }
         try { summary.put("discounts", seedDiscounts()); } catch (Exception e) { log.warn("Discount seeding: {}", e.getMessage()); }
+        try { summary.put("expiryDates", seedExpiryDates()); } catch (Exception e) { log.warn("Expiry seeding: {}", e.getMessage()); }
 
         return summary;
+    }
+
+    private String seedExpiryDates() {
+        if (jdbcTemplate != null) {
+            try {
+                jdbcTemplate.execute("UPDATE purchases SET status = 'RECEIVED' WHERE status IS NULL;");
+                jdbcTemplate.execute("UPDATE purchase_items SET remaining_quantity = quantity WHERE remaining_quantity IS NULL;");
+                jdbcTemplate.execute("UPDATE products SET expiry_date = CURRENT_DATE - INTERVAL '2 days' WHERE code = '10000000000007' AND expiry_date IS NULL;");
+                jdbcTemplate.execute("UPDATE products SET expiry_date = CURRENT_DATE + INTERVAL '4 days' WHERE code = '10000000000008' AND expiry_date IS NULL;");
+                jdbcTemplate.execute("UPDATE products SET expiry_date = CURRENT_DATE + INTERVAL '25 days' WHERE code = '10000000000005' AND expiry_date IS NULL;");
+                jdbcTemplate.execute("UPDATE products SET expiry_date = CURRENT_DATE + INTERVAL '30 days' WHERE code = '10000000000006' AND expiry_date IS NULL;");
+                jdbcTemplate.execute("UPDATE ingredients SET expiry_date = CURRENT_DATE + INTERVAL '3 days' WHERE code = 'ING-002' AND expiry_date IS NULL;");
+                jdbcTemplate.execute("UPDATE ingredients SET expiry_date = CURRENT_DATE + INTERVAL '60 days' WHERE code = 'ING-001' AND expiry_date IS NULL;");
+                jdbcTemplate.execute("UPDATE ingredients SET expiry_date = CURRENT_DATE + INTERVAL '90 days' WHERE code = 'ING-004' AND expiry_date IS NULL;");
+                jdbcTemplate.execute("UPDATE ingredients SET expiry_date = CURRENT_DATE - INTERVAL '1 day' WHERE code = 'ING-003' AND expiry_date IS NULL;");
+                return "Expiry dates and batches verified/seeded";
+            } catch (Exception e) {
+                log.warn("Expiry dates seeding notice: {}", e.getMessage());
+            }
+        }
+        return "Expiry seeding skipped";
     }
 
     private String seedAdminUser() {

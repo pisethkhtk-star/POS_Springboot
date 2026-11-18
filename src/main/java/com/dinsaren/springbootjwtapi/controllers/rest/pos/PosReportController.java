@@ -28,4 +28,14 @@ public class PosReportController {
     ) {
         return ResponseEntity.ok(reportService.getReports(startDate, endDate));
     }
+
+    @Operation(summary = "Generate product and ingredient expiry tracking report sorted by expiry date")
+    @GetMapping("/expiry")
+    public ResponseEntity<Map<String, Object>> getExpiryReport(
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) String type,
+        @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(reportService.getExpiryReport(search, type, status));
+    }
 }

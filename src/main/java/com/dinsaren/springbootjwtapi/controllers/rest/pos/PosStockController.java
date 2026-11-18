@@ -4,7 +4,6 @@ import com.dinsaren.springbootjwtapi.models.pos.Ingredient;
 import com.dinsaren.springbootjwtapi.models.pos.InventoryLog;
 import com.dinsaren.springbootjwtapi.models.pos.StockMovementType;
 import com.dinsaren.springbootjwtapi.payload.pos.StockMovementRequest;
-import com.dinsaren.springbootjwtapi.repository.pos.InventoryLogRepository;
 import com.dinsaren.springbootjwtapi.security.services.UserDetailsImpl;
 import com.dinsaren.springbootjwtapi.services.pos.StockService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,7 +16,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -28,7 +26,6 @@ import java.util.Map;
 public class PosStockController {
 
     private final StockService stockService;
-    private final InventoryLogRepository inventoryLogRepository;
 
     @Operation(summary = "Get ingredients below minimum stock threshold (low-stock alerts)")
     @GetMapping("/low-stock")
@@ -77,10 +74,6 @@ public class PosStockController {
     public ResponseEntity<List<InventoryLog>> getMovements(
         @RequestParam(required = false) StockMovementType type
     ) {
-        List<InventoryLog> all = inventoryLogRepository.findAllByOrderByCreatedAtDesc();
-        if (type != null) {
-            all = all.stream().filter(l -> l.getType() != null && l.getType().equalsIgnoreCase(type.name())).toList();
-        }
-        return ResponseEntity.ok(all);
+        return ResponseEntity.ok(stockService.getMovements(type));
     }
 }

@@ -51,11 +51,19 @@ public class PurchaseItem extends BaseEntity {
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
 
+    @Column(name = "remaining_quantity", precision = 15, scale = 4)
+    private BigDecimal remainingQuantity;
+
+    public BigDecimal getRemainingQuantity() {
+        return remainingQuantity != null ? remainingQuantity : (quantity != null ? quantity : BigDecimal.ZERO);
+    }
+
     public PurchaseItem(Purchase purchase, Ingredient ingredient, BigDecimal quantity, BigDecimal cost, BigDecimal subtotal) {
         this.purchase = purchase;
         this.ingredientId = ingredient.getId();
         this.ingredient = ingredient;
         this.quantity = quantity;
+        this.remainingQuantity = quantity;
         this.cost = cost;
         this.subtotal = subtotal;
     }
@@ -65,6 +73,7 @@ public class PurchaseItem extends BaseEntity {
         this.ingredientId = ingredient.getId();
         this.ingredient = ingredient;
         this.quantity = quantity;
+        this.remainingQuantity = quantity;
         this.cost = cost;
         this.subtotal = subtotal;
         this.expiryDate = expiryDate;
@@ -75,6 +84,7 @@ public class PurchaseItem extends BaseEntity {
         this.productId = product.getId();
         this.product = product;
         this.quantity = quantity;
+        this.remainingQuantity = quantity;
         this.cost = cost;
         this.subtotal = subtotal;
     }
@@ -84,6 +94,7 @@ public class PurchaseItem extends BaseEntity {
         this.productId = product.getId();
         this.product = product;
         this.quantity = quantity;
+        this.remainingQuantity = quantity;
         this.cost = cost;
         this.subtotal = subtotal;
         this.expiryDate = expiryDate;
