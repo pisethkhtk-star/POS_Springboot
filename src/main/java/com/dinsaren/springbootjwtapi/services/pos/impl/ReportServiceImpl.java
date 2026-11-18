@@ -93,7 +93,7 @@ public class ReportServiceImpl implements ReportService {
             salesByDateMap.put(dateKey, salesByDateMap.getOrDefault(dateKey, 0.0) + netTotal);
             ordersByDateMap.put(dateKey, ordersByDateMap.getOrDefault(dateKey, 0) + 1);
 
-            String pm = o.getPaymentMethod() != null ? o.getPaymentMethod() : "OTHER";
+            String pm = o.getPaymentMethod() != null ? o.getPaymentMethod().name() : "OTHER";
             paymentMethodMap.put(pm, paymentMethodMap.getOrDefault(pm, 0.0) + netTotal);
 
             String cashierName = (o.getUser() != null && o.getUser().getName() != null)
